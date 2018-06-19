@@ -1,0 +1,51 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn import svm
+ 
+#Please change name of file in the path
+apldaily = pd.read_csv('C:/Users/Admin/OneDrive - Georgia State University/MSA 8010 Data Programming/Project/BoeingDaily5Yr.csv')
+apldaily['Date'] = pd.to_datetime(apldaily['Date'], format = '%Y-%m-%d')
+apldaily.set_index('Date', inplace = True)
+apldaily.head()
+ 
+def EMA(ndays,Series):
+    return pd.ewma(Series, span = ndays)
+ 
+def momentum(ndays,series):
+    def prev_closing(values):
+        return values[0]
+    prevclose = series.rolling(window = ndays).apply(prev_closing)
+    return series - prevclose
+#     delta = np.where(apldaily['Adj Close'].diff() > 0, 1, -1)
+#     return series.pct_change().rolling(window = ndays).mean() 
+ 
+def ROC(ndays,series):
+    def prev_closing(values):
+        return values[0]
+    prevclose = series.rolling(window = ndays).apply(prev_closing)
+    return (series - prevclose)/prevclose * 100
+ 
+def volatility(ndays,series):
+    chngpt = series.pct_change()
+    return chngpt.rolling(window = ndays).std() * np.sqrt(ndays)
+def movingavg(ndays,series):
+    return series.rolling(window = ndays).mean()
+ 
+ 
+#finaldf['MA'] = movingavg(5,apldaily['Adj Close'])
+ 
+def prepare(ndays):#This function finds the dataset as per given input time interval e.g.(5days, 10 days etc.)
+    finaldf = pd.DataFrame()
+    finaldf['momentum'] = momentum(ndays,apldaily['Adj Close'])
+    finaldf['ROC'] = ROC(ndays,apldaily['Adj Close'])
+    finaldf['volatility'] = volatility(ndays,apldaily['Adj Close'])
+    finaldf['delta'] = np.where(apldaily['Adj Close'].diff() > 0, 1, -1)
+    return finaldf[finaldf.columns[:-1]].iloc[ndays:], finaldf[finaldf.columns[-1]].iloc[ndays:]
+X, y = prepare(5)
+ 
+#Machine learning model score and calculation
+X_train,X_test,y_train,y_test = train_test_split(X,y)
+clf = svm.SVC(kernel = 'rbf', C=1000, gamma = 0.0001).fit(X_train,y_train)
+#please note this score
+clf.score(X_test,y_test)
